@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+    "name": "Gemini Project Folders",
+    "version": "1.0",
+    "description": "為 Gemini 側邊欄增加資料夾分類功能",
+    "permissions": ["storage"],
+    "action": {},
+    "content_scripts": [
+      {
+        "matches": ["https://gemini.google.com/*"],
+        "js": ["content.js"],
+        "css": ["style.css"]
+      }
+    ]
+  }
