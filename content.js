@@ -47,88 +47,88 @@ const Icons = {
   bot: `<svg width="24" height="24" viewBox="0 -960 960 960" fill="currentColor"><path d="M160-120v-160q0-33 23.5-56.5T240-360h480q33 0 56.5 23.5T800-280v160H160Zm320-320q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Z"/></svg>`
 };
 
-// --- 3. 視窗與選單管理 (找回專業的 Modal) ---
+// --- 3. 視窗與選單管理 ---
 const ModalManager = {
-  closeAll() {
-    const el = document.getElementById('gnest-modal-overlay'); if (el) el.remove();
-    const m = document.getElementById('gnest-context-menu'); if (m) m.remove();
-  },
+    closeAll() {
+      const el = document.getElementById('gnest-modal-overlay'); if (el) el.remove();
+      const m = document.getElementById('gnest-context-menu'); if (m) m.remove();
+    },
+    
+    // 開啟建立資料夾的黑視窗
+    async openFolderModal() {
+      this.closeAll();
+      const { kbs } = await DataManager.getCoreData();
+      let options = '<option value="" style="background:#1e1f20;">(無配對)</option>';
+      kbs.forEach(k => options += `<option value="${k.id}" style="background:#1e1f20;">${k.name}</option>`);
   
-  // 開啟建立資料夾的黑視窗
-  async openFolderModal() {
-    this.closeAll();
-    const { kbs } = await DataManager.getCoreData();
-    let options = '<option value="" style="background:#1e1f20;">(無配對)</option>';
-    kbs.forEach(k => options += `<option value="${k.id}" style="background:#1e1f20;">${k.name}</option>`);
-
-    const overlay = document.createElement('div');
-    overlay.id = 'gnest-modal-overlay';
-    overlay.innerHTML = `
-      <div class="gnest-modal-box" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:20001;">
-        <h3>新建資料夾</h3>
-        <input type="text" id="fd-name" class="gnest-input" placeholder="資料夾名稱" autofocus>
-        <div style="font-size:12px; color:#c4c7c5; margin-bottom:4px;">配對知識庫</div>
-        <select id="fd-kb" class="gnest-input">${options}</select>
-        <div class="gnest-btn-group">
-          <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
-          <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+      const overlay = document.createElement('div');
+      overlay.id = 'gnest-modal-overlay';
+      overlay.innerHTML = `
+        <div class="gnest-modal-box">
+          <h3>新建資料夾</h3>
+          <input type="text" id="fd-name" class="gnest-input" placeholder="資料夾名稱" autofocus>
+          <div style="font-size:12px; color:#c4c7c5; margin-bottom:8px;">配對知識庫</div>
+          <select id="fd-kb" class="gnest-input">${options}</select>
+          <div class="gnest-btn-group">
+            <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
+            <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+          </div>
         </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    
-    document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
-    document.getElementById('btn-modal-create').onclick = async () => {
-      const name = document.getElementById('fd-name').value;
-      const kbId = document.getElementById('fd-kb').value;
-      if (name) { await DataManager.saveFolder(name, kbId); this.closeAll(); }
-    };
-  },
-
-  // 開啟建立知識庫的黑視窗
-  openKBModal() {
-    this.closeAll();
-    const overlay = document.createElement('div');
-    overlay.id = 'gnest-modal-overlay';
-    overlay.innerHTML = `
-      <div class="gnest-modal-box" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:20001;">
-        <h3>新建知識庫</h3>
-        <input type="text" id="kb-name" class="gnest-input" placeholder="知識庫名稱" autofocus>
-        <input type="text" id="kb-desc" class="gnest-input" placeholder="簡介/連結">
-        <div class="gnest-btn-group">
-          <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
-          <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+      `;
+      document.body.appendChild(overlay);
+      
+      document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
+      document.getElementById('btn-modal-create').onclick = async () => {
+        const name = document.getElementById('fd-name').value;
+        const kbId = document.getElementById('fd-kb').value;
+        if (name) { await DataManager.saveFolder(name, kbId); this.closeAll(); }
+      };
+    },
+  
+    // 開啟建立知識庫的黑視窗
+    openKBModal() {
+      this.closeAll();
+      const overlay = document.createElement('div');
+      overlay.id = 'gnest-modal-overlay';
+      overlay.innerHTML = `
+        <div class="gnest-modal-box">
+          <h3>新建知識庫</h3>
+          <input type="text" id="kb-name" class="gnest-input" placeholder="知識庫名稱" autofocus>
+          <input type="text" id="kb-desc" class="gnest-input" placeholder="簡介/連結">
+          <div class="gnest-btn-group">
+            <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
+            <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+          </div>
         </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    
-    document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
-    document.getElementById('btn-modal-create').onclick = async () => {
-      const name = document.getElementById('kb-name').value;
-      const desc = document.getElementById('kb-desc').value;
-      if (name) { await DataManager.saveKB(name, desc); this.closeAll(); }
-    };
-  },
-
-  // 開啟三點選項選單
-  openContextMenu(e, folder) {
-    this.closeAll(); e.preventDefault(); e.stopPropagation();
-    const menu = document.createElement('div');
-    menu.id = 'gnest-context-menu';
-    menu.innerHTML = `
-      <div class="gnest-cm-item" id="cm-add">${Icons.add} 存入當前對話</div>
-      <div class="gnest-cm-item" id="cm-del" style="color:#ff8080;">${Icons.delete} 刪除資料夾</div>
-    `;
-    const rect = e.target.closest('.btn-more').getBoundingClientRect();
-    menu.style.top = `${rect.bottom + 5}px`; 
-    menu.style.left = `${rect.left}px`;
-    document.body.appendChild(menu);
-    
-    setTimeout(() => { document.addEventListener('click', this.closeAll, {once: true}); }, 0);
-    document.getElementById('cm-del').onclick = () => DataManager.deleteFolder(folder.id);
-  }
-};
+      `;
+      document.body.appendChild(overlay);
+      
+      document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
+      document.getElementById('btn-modal-create').onclick = async () => {
+        const name = document.getElementById('kb-name').value;
+        const desc = document.getElementById('kb-desc').value;
+        if (name) { await DataManager.saveKB(name, desc); this.closeAll(); }
+      };
+    },
+  
+    // 開啟三點選項選單
+    openContextMenu(e, folder) {
+      this.closeAll(); e.preventDefault(); e.stopPropagation();
+      const menu = document.createElement('div');
+      menu.id = 'gnest-context-menu';
+      menu.innerHTML = `
+        <div class="gnest-cm-item" id="cm-add">${Icons.add} 存入當前對話</div>
+        <div class="gnest-cm-item" id="cm-del" style="color:#ff8080;">${Icons.delete} 刪除資料夾</div>
+      `;
+      const rect = e.target.closest('.btn-more').getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 5}px`; 
+      menu.style.left = `${rect.left}px`;
+      document.body.appendChild(menu);
+      
+      setTimeout(() => { document.addEventListener('click', this.closeAll, {once: true}); }, 0);
+      document.getElementById('cm-del').onclick = () => DataManager.deleteFolder(folder.id);
+    }
+  };
 
 // --- 4. 側邊欄 UI 控制器 ---
 const UIController = {
