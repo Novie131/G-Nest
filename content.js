@@ -1,238 +1,245 @@
-console.log("🚀 G-Nest 旗艦版啟動中...");
+console.log("🚀 G-Nest 終極裝甲版啟動中...");
 
-// --- 1. 資料庫管理 (Sync Storage) ---
+// --- 1. 資料層 (Sync Storage) ---
 const DataManager = {
   async getCoreData() {
     const data = await chrome.storage.sync.get(['gnest_folders', 'gnest_kbs']);
     return {
-      folders: data.gnest_folders || [], // {id, name, chats:[], kbId}
-      kbs: data.gnest_kbs || []          // {id, name, summary}
+      folders: data.gnest_folders || [], // 結構: {id, name, chats:[], kbId}
+      kbs: data.gnest_kbs || []          // 結構: {id, name, summary}
     };
   },
   async createFolder(name, kbId) {
     const { folders } = await this.getCoreData();
     folders.push({ id: 'f_' + Date.now(), name, chats: [], kbId: kbId || null });
     await chrome.storage.sync.set({ gnest_folders: folders });
-    renderGnestUI(); // 重新渲染側邊欄
+    UIController.refresh(); // 重繪 UI
   },
   async createKB(name, summary) {
     const { kbs } = await this.getCoreData();
     kbs.push({ id: 'kb_' + Date.now(), name, summary });
     await chrome.storage.sync.set({ gnest_kbs: kbs });
+    UIController.refresh();
   },
-  async saveChatToFolder(folderId, chatId, chatTitle) {
+  async saveChatToFolder(folderId) {
+    const chatId = window.location.href.split('/chat/')[1];
+    if (!chatId) return alert('請先打開一則對話！');
+    
+    const chatTitle = document.title.replace(' - Gemini', '').trim();
     const { folders } = await this.getCoreData();
     const folder = folders.find(f => f.id === folderId);
+    
     if (folder && !folder.chats.some(c => c.id === chatId)) {
       folder.chats.push({ id: chatId, title: chatTitle });
       await chrome.storage.sync.set({ gnest_folders: folders });
-      renderGnestUI();
+      alert(`✅ 已將「${chatTitle}」存入 ${folder.name}`);
+      UIController.refresh();
+    } else {
+      alert('⚠️ 此對話已經在資料夾中了！');
     }
   }
 };
 
-// --- 2. 彈出視窗 UI (Modal) ---
+// --- 2. 彈出視窗系統 (Modal) ---
 const ModalManager = {
   close() {
-    const existing = document.getElementById('gnest-modal-overlay');
-    if (existing) existing.remove();
+    const el = document.getElementById('gnest-modal-overlay');
+    if (el) el.remove();
   },
-  createOverlay() {
+  // 建立基礎視窗
+  createBase(titleHTML, bodyHTML, onSave) {
     this.close();
     const overlay = document.createElement('div');
     overlay.id = 'gnest-modal-overlay';
-    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px);";
-    // 點擊背景關閉
+    // 讓背景變暗且模糊
+    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px);";
+    
+    const box = document.createElement('div');
+    box.style.cssText = "background: #1e1e1e; border: 1px solid #444746; border-radius: 12px; padding: 24px; width: 350px; color: #e3e3e3; font-family: 'Google Sans', sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.5);";
+    box.innerHTML = `<h3 style="margin-top:0; color: #e3e3e3; font-size: 16px;">${titleHTML}</h3>${bodyHTML}`;
+    
+    const btnBox = document.createElement('div');
+    btnBox.style.cssText = "display: flex; justify-content: flex-end; margin-top: 24px;";
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = "取消";
+    cancelBtn.style.cssText = "padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; background: transparent; color: #8ab4f8; font-weight: 500;";
+    cancelBtn.onclick = () => this.close();
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.innerText = "建立";
+    saveBtn.style.cssText = "padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; background: #8ab4f8; color: #131314; font-weight: 500; margin-left: 10px;";
+    saveBtn.onclick = onSave;
+
+    btnBox.appendChild(cancelBtn);
+    btnBox.appendChild(saveBtn);
+    box.appendChild(btnBox);
+    overlay.appendChild(box);
+    
     overlay.onclick = (e) => { if (e.target === overlay) this.close(); };
-    return overlay;
-  },
-  getModalStyle() {
-    return "background: #1e1e1e; border: 1px solid #444746; border-radius: 12px; padding: 24px; width: 350px; color: #e3e3e3; font-family: sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.5);";
-  },
-  getInputStyle() {
-    return "width: 100%; padding: 10px; margin: 10px 0 20px 0; background: #333537; border: 1px solid #555; color: white; border-radius: 6px; box-sizing: border-box;";
-  },
-  getBtnStyle(isPrimary) {
-    return `padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; margin-left: 10px; ${isPrimary ? 'background: #8ab4f8; color: #131314;' : 'background: transparent; color: #8ab4f8;'}`;
+    document.body.appendChild(overlay);
   },
 
   // 開啟「新增知識庫」視窗
   openKBModal() {
-    const overlay = this.createOverlay();
-    const modal = document.createElement('div');
-    modal.style.cssText = this.getModalStyle();
-    modal.innerHTML = `
-      <h3 style="margin-top:0; color: #e3e3e3;">📚 新增知識庫</h3>
+    const inputStyle = "width: 100%; padding: 10px; margin: 8px 0 16px 0; background: #333537; border: 1px solid #555; color: white; border-radius: 6px; box-sizing: border-box;";
+    const body = `
       <label style="font-size: 12px; color: #9aa0a6;">知識庫名稱</label>
-      <input type="text" id="kb-name" placeholder="例如: 研究所論文整理" style="${this.getInputStyle()}">
+      <input type="text" id="kb-name" placeholder="例如: 資安事件報告" style="${inputStyle}">
       <label style="font-size: 12px; color: #9aa0a6;">描述 (選填)</label>
-      <input type="text" id="kb-desc" placeholder="簡短說明..." style="${this.getInputStyle()}">
-      <div style="display: flex; justify-content: flex-end;">
-        <button id="kb-cancel" style="${this.getBtnStyle(false)}">取消</button>
-        <button id="kb-save" style="${this.getBtnStyle(true)}">建立</button>
-      </div>
+      <input type="text" id="kb-desc" placeholder="簡短說明..." style="${inputStyle}">
     `;
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    document.getElementById('kb-cancel').onclick = () => this.close();
-    document.getElementById('kb-save').onclick = async () => {
+    this.createBase("📚 新增知識庫", body, async () => {
       const name = document.getElementById('kb-name').value.trim();
       const desc = document.getElementById('kb-desc').value.trim();
       if (name) {
         await DataManager.createKB(name, desc);
-        alert(`✅ 知識庫「${name}」建立成功！`);
         this.close();
       }
-    };
+    });
   },
 
-  // 開啟「新增對話資料夾」視窗 (包含配對 KB)
+  // 開啟「新增對話資料夾」視窗 (包含配對邏輯)
   async openFolderModal() {
     const { kbs } = await DataManager.getCoreData();
     let kbOptions = '<option value="">(無配對)</option>';
     kbs.forEach(kb => { kbOptions += `<option value="${kb.id}">${kb.name}</option>`; });
-
-    const overlay = this.createOverlay();
-    const modal = document.createElement('div');
-    modal.style.cssText = this.getModalStyle();
-    modal.innerHTML = `
-      <h3 style="margin-top:0; color: #e3e3e3;">📁 新增對話資料夾</h3>
+    
+    const inputStyle = "width: 100%; padding: 10px; margin: 8px 0 16px 0; background: #333537; border: 1px solid #555; color: white; border-radius: 6px; box-sizing: border-box;";
+    const body = `
       <label style="font-size: 12px; color: #9aa0a6;">資料夾名稱</label>
-      <input type="text" id="folder-name" placeholder="例如: Go WebAuthn 專案" style="${this.getInputStyle()}">
+      <input type="text" id="fd-name" placeholder="例如: Go WebAuthn 專案" style="${inputStyle}">
       <label style="font-size: 12px; color: #9aa0a6;">配對知識庫 (可選)</label>
-      <select id="folder-kb" style="${this.getInputStyle()}">
-        ${kbOptions}
-      </select>
-      <div style="display: flex; justify-content: flex-end;">
-        <button id="fd-cancel" style="${this.getBtnStyle(false)}">取消</button>
-        <button id="fd-save" style="${this.getBtnStyle(true)}">建立</button>
-      </div>
+      <select id="fd-kb" style="${inputStyle}">${kbOptions}</select>
     `;
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    document.getElementById('fd-cancel').onclick = () => this.close();
-    document.getElementById('fd-save').onclick = async () => {
-      const name = document.getElementById('folder-name').value.trim();
-      const kbId = document.getElementById('folder-kb').value;
+    this.createBase("📁 新增對話資料夾", body, async () => {
+      const name = document.getElementById('fd-name').value.trim();
+      const kbId = document.getElementById('fd-kb').value;
       if (name) {
         await DataManager.createFolder(name, kbId);
         this.close();
       }
-    };
+    });
   }
 };
 
 // --- 3. 側邊欄 UI 注入與渲染 ---
-async function renderGnestUI() {
-  // 尋找側邊欄的清單容器
-  const sidebar = document.querySelector('nav') || document.querySelector('aside');
-  if (!sidebar) return;
+const UIController = {
+  async refresh() {
+    // 找尋側邊欄
+    const sidebar = document.querySelector('nav') || document.querySelector('aside');
+    if (!sidebar) return;
 
-  // 避免重複注入
-  let gnestContainer = document.getElementById('gnest-main-container');
-  if (!gnestContainer) {
-    gnestContainer = document.createElement('div');
-    gnestContainer.id = 'gnest-main-container';
-    gnestContainer.style.cssText = "margin-top: 15px; border-top: 1px solid #444746; padding-top: 10px;";
-    
-    // 試著找到 "我的內容" 的節點，插在它後面
-    const allText = document.evaluate("//span[contains(text(), '我的內容')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (allText) {
-        // 找到包含「我的內容」的最外層按鈕容器
-        const myContentBtn = allText.closest('div[role="listitem"]') || allText.closest('li') || allText.closest('a');
-        if (myContentBtn && myContentBtn.parentNode) {
-            myContentBtn.parentNode.insertBefore(gnestContainer, myContentBtn.nextSibling);
-        } else {
-            sidebar.appendChild(gnestContainer);
-        }
-    } else {
-        sidebar.appendChild(gnestContainer); // 找不到就塞在最下面
-    }
-  }
-
-  // 渲染功能選單與資料夾列表
-  const { folders, kbs } = await DataManager.getCoreData();
-  
-  // 原生風格的 Hover Item 函數
-  const createNavItem = (icon, text, onClick) => {
-    const el = document.createElement('div');
-    el.style.cssText = "display: flex; align-items: center; padding: 10px 16px; cursor: pointer; color: #e3e3e3; font-size: 13px; border-radius: 0 20px 20px 0; margin-right: 8px; transition: background 0.2s;";
-    el.onmouseover = () => el.style.background = '#333537';
-    el.onmouseout = () => el.style.background = 'transparent';
-    el.onclick = onClick;
-    el.innerHTML = `<span style="margin-right: 12px; font-size: 16px;">${icon}</span><span>${text}</span>`;
-    return el;
-  };
-
-  gnestContainer.innerHTML = ''; // 清空重繪
-
-  // 加入兩個核心按鈕
-  gnestContainer.appendChild(createNavItem('📁+', '新增對話資料夾', () => ModalUI.openFolderModal()));
-  gnestContainer.appendChild(createNavItem('📚+', '新增知識庫', () => ModalUI.openKBModal()));
-
-  // 標題
-  const title = document.createElement('div');
-  title.style.cssText = "padding: 15px 16px 5px 16px; font-size: 12px; color: #9aa0a6; font-weight: bold;";
-  title.innerText = "我的專案資料夾";
-  gnestContainer.appendChild(title);
-
-  // 渲染每個資料夾
-  folders.forEach(folder => {
-    // 尋找配對的 KB 名稱
-    const pairedKB = kbs.find(k => k.id === folder.kbId);
-    const kbTag = pairedKB ? `<span style="font-size: 10px; color: #8ab4f8; margin-left: 6px;">[${pairedKB.name}]</span>` : '';
-
-    const folderEl = document.createElement('details');
-    folderEl.style.cssText = "color: #e3e3e3; margin-left: 8px;";
-    folderEl.innerHTML = `<summary style="padding: 8px; cursor: pointer; font-size: 13px;">📁 ${folder.name} (${folder.chats.length}) ${kbTag}</summary>`;
-    
-    const list = document.createElement('ul');
-    list.style.cssText = "list-style: none; padding-left: 20px; margin: 0;";
-
-    folder.chats.forEach(chat => {
-      const li = document.createElement('li');
-      li.style.padding = "4px 0";
-      li.innerHTML = `<a href="/app/chat/${chat.id}" style="color: #9aa0a6; text-decoration: none; font-size: 12px;">📄 ${chat.title}</a>`;
+    // 建立或獲取 G-Nest 容器
+    let container = document.getElementById('gnest-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'gnest-container';
+      container.style.cssText = "margin: 10px 0; border-top: 1px solid #444746; padding-top: 10px;";
       
-      // 點擊過濾功能！
-      li.onclick = () => {
-         setTimeout(() => {
+      // 核心魔法：精準尋找「我的內容」並插入在它下方
+      let targetNode = null;
+      const elements = sidebar.querySelectorAll('span, div, a');
+      for (let el of elements) {
+        if (el.innerText && el.innerText.trim() === '我的內容') {
+           // 找到包含該文字的最外層按鈕容器
+           targetNode = el.closest('div[role="listitem"]') || el.closest('li') || el.closest('a') || el.parentElement;
+           break;
+        }
+      }
+      
+      if (targetNode && targetNode.parentNode) {
+        targetNode.parentNode.insertBefore(container, targetNode.nextSibling);
+      } else {
+        sidebar.prepend(container); // 如果找不到就放在最上面
+      }
+    }
+
+    const { folders, kbs } = await DataManager.getCoreData();
+    
+    // 渲染骨架與兩個原生風格按鈕
+    container.innerHTML = `
+      <div style="padding: 10px 16px 5px 16px; font-size: 11px; color: #9aa0a6; font-weight: bold; letter-spacing: 0.8px;">G-NEST 專案</div>
+      <div id="btn-add-folder" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; color: #e3e3e3; font-size: 13px; border-radius: 0 20px 20px 0; margin-right: 8px; transition: background 0.2s;">
+        <span style="margin-right: 12px; font-size: 16px;">📁</span> 新增對話資料夾
+      </div>
+      <div id="btn-add-kb" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; color: #e3e3e3; font-size: 13px; border-radius: 0 20px 20px 0; margin-right: 8px; transition: background 0.2s;">
+        <span style="margin-right: 12px; font-size: 16px;">📚</span> 新增知識庫
+      </div>
+      <div id="gnest-folder-list" style="margin-top: 5px;"></div>
+    `;
+
+    // 綁定 Hover 效果與點擊事件
+    ['btn-add-folder', 'btn-add-kb'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.onmouseover = () => btn.style.background = '#333537';
+      btn.onmouseout = () => btn.style.background = 'transparent';
+    });
+
+    document.getElementById('btn-add-folder').onclick = () => ModalManager.openFolderModal();
+    document.getElementById('btn-add-kb').onclick = () => ModalManager.openKBModal();
+
+    // 渲染資料夾列表
+    const folderListEl = document.getElementById('gnest-folder-list');
+    folders.forEach(folder => {
+      // 標示配對的知識庫
+      const kb = kbs.find(k => k.id === folder.kbId);
+      const kbTag = kb ? `<span style="font-size: 10px; color: #8ab4f8; margin-left: 6px; background: rgba(138, 180, 248, 0.1); padding: 2px 6px; border-radius: 4px;">[${kb.name}]</span>` : '';
+      
+      const details = document.createElement('details');
+      details.style.cssText = "color: #e3e3e3; margin-left: 8px; padding-bottom: 5px;";
+      details.innerHTML = `<summary style="padding: 8px; cursor: pointer; font-size: 13px; list-style: none; display: flex; align-items: center;">
+        <span style="margin-right: 8px;">📁</span> ${folder.name} (${folder.chats.length}) ${kbTag}
+      </summary>`;
+      
+      const ul = document.createElement('ul');
+      ul.style.cssText = "list-style: none; padding-left: 30px; margin: 0; font-size: 12px;";
+      
+      // 渲染資料夾內的對話
+      folder.chats.forEach(chat => {
+        const li = document.createElement('li');
+        li.style.cssText = "padding: 6px 0; cursor: pointer; color: #9aa0a6; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;";
+        li.innerHTML = `📄 ${chat.title}`;
+        li.onmouseover = () => li.style.color = '#e3e3e3';
+        li.onmouseout = () => li.style.color = '#9aa0a6';
+        
+        // 點擊對話邏輯
+        li.onclick = () => {
+          if (window.location.href.indexOf(chat.id) === -1) {
+            window.location.href = `/app/chat/${chat.id}`;
+          }
+          // 過濾側邊欄其他對話
+          setTimeout(() => {
             const folderChatIds = folder.chats.map(c => c.id);
             document.querySelectorAll('a[href*="/app/chat/"]').forEach(link => {
               const linkId = link.getAttribute('href').split('/chat/')[1];
               const box = link.closest('div[role="listitem"]') || link;
               box.style.display = folderChatIds.includes(linkId) ? 'block' : 'none';
             });
-         }, 500);
-      };
-      list.appendChild(li);
+          }, 800);
+        };
+        ul.appendChild(li);
+      });
+
+      // 「存入當前對話」按鈕 (放在每個資料夾底部)
+      const saveBtn = document.createElement('button');
+      saveBtn.innerText = "+ 將當前對話存入";
+      saveBtn.style.cssText = "background: transparent; border: 1px dashed #555; color: #8ab4f8; border-radius: 4px; padding: 4px 8px; font-size: 11px; margin-top: 5px; cursor: pointer; width: 90%;";
+      saveBtn.onmouseover = () => saveBtn.style.background = 'rgba(255,255,255,0.05)';
+      saveBtn.onmouseout = () => saveBtn.style.background = 'transparent';
+      saveBtn.onclick = () => DataManager.saveChatToFolder(folder.id);
+      
+      ul.appendChild(saveBtn);
+      details.appendChild(ul);
+      folderListEl.appendChild(details);
     });
+  }
+};
 
-    // 存入當前對話的按鈕 (放在資料夾展開的底部)
-    const saveBtn = document.createElement('button');
-    saveBtn.innerText = "+ 將當前對話存入此資料夾";
-    saveBtn.style.cssText = "background: transparent; border: 1px dashed #555; color: #8ab4f8; border-radius: 4px; padding: 4px 8px; font-size: 11px; margin-top: 5px; cursor: pointer; width: 90%;";
-    saveBtn.onclick = async () => {
-      const chatId = window.location.href.split('/chat/')[1];
-      const chatTitle = document.title.replace(' - Gemini', '').trim();
-      if (!chatId) return alert("請先打開一則對話！");
-      await DataManager.saveChatToFolder(folder.id, chatId, chatTitle);
-      alert(`已存入 ${folder.name}`);
-    };
-    list.appendChild(saveBtn);
-
-    folderEl.appendChild(list);
-    gnestContainer.appendChild(folderEl);
-  });
-}
-
-// 修正 ModalUI 參考 (讓上面的 createNavItem 讀得到)
-const ModalUI = ModalManager;
-
-// --- 4. 監控與啟動 ---
-const observer = new MutationObserver(() => {
-  renderGnestUI();
-});
-observer.observe(document.body, { childList: true, subtree: true });
+// --- 4. 裝甲級保證掛載 (取代會卡死的 MutationObserver) ---
+// 每 1.5 秒檢查一次 UI 是否還在，如果被 Google 網頁切換洗掉，就自動補回來
+setInterval(() => {
+  if (!document.getElementById('gnest-container')) {
+    UIController.refresh();
+  }
+}, 1500);
