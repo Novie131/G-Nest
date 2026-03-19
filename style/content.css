@@ -1,20 +1,18 @@
-/* --- G-Nest 完美像素級樣式表 --- */
+/* --- G-Nest 完美像素級樣式表 (v3) --- */
 
 #gnest-root {
-  margin: 16px 0;
+  margin: 8px 0;
   font-family: 'Google Sans', Roboto, sans-serif;
   color: #e3e3e3;
-  z-index: 5;
-  position: relative;
+  z-index: 5; position: relative;
 }
 
-/* 1. 大分類標題 (類似 Gem) */
+/* 1. 大分類標題 */
 .gnest-section { margin-bottom: 12px; }
 #gnest-root .gnest-section summary {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px; 
-  font-size: 13px; /* 🔧 修改：縮小字體以符合原生比例 */
-  font-weight: 500; color: #e3e3e3; cursor: pointer; list-style: none;
+  padding: 8px 16px 8px 24px; /* 🔧 對齊修正：左側 padding 加大 */
+  font-size: 13px; font-weight: 500; color: #e3e3e3; cursor: pointer; list-style: none;
 }
 #gnest-root .gnest-section summary::-webkit-details-marker { display: none; }
 #gnest-root .gnest-section summary:hover { background-color: rgba(255,255,255,0.04) !important; }
@@ -22,29 +20,35 @@
 .gnest-chevron { transition: transform 0.2s; color: #c4c7c5; }
 .gnest-section[open] > summary .gnest-chevron { transform: rotate(90deg); }
 
-/* 2. 資料夾項目與按鈕 */
+/* 2. 資料夾與按鈕項目 */
 #gnest-root .gnest-folder-summary, 
 #gnest-root .gnest-pill-btn {
   position: relative; display: flex; align-items: center;
-  height: 38px; /* 🔧 修改：稍微調低高度，看起來更精緻 */
-  padding: 0 16px 0 24px; cursor: pointer;
-  font-size: 13px; /* 🔧 修改：字體縮小 */
-  color: #e3e3e3; border-radius: 0 19px 19px 0;
-  margin-right: 8px; transition: background 0.2s; list-style: none;
+  height: 38px;
+  padding: 0 16px 0 24px; /* 🔧 對齊修正：完美對齊原生的圖示位置 */
+  cursor: pointer; font-size: 13px; color: #e3e3e3; 
+  border-radius: 0 19px 19px 0; margin-right: 8px; 
+  transition: background 0.2s, border 0.2s; list-style: none;
 }
-#gnest-root .gnest-pill-btn { padding: 0 16px; font-weight: 500; }
-
+#gnest-root .gnest-pill-btn { font-weight: 500; }
 #gnest-root .gnest-folder-summary::-webkit-details-marker { display: none; }
 #gnest-root .gnest-folder-summary:hover, 
 #gnest-root .gnest-pill-btn:hover { background-color: #2d2e30 !important; }
 
+/* 💡 拖曳時的發光效果 */
+.gnest-drag-over > summary {
+  background-color: rgba(138, 180, 248, 0.2) !important;
+  border: 1px dashed #8ab4f8;
+}
+
 .gnest-folder-icon, .gnest-btn-icon {
-  margin-right: 14px; color: #c4c7c5; display: flex; align-items: center;
+  margin-right: 16px; /* 🔧 調整圖示與文字的間距 */
+  color: #c4c7c5; display: flex; align-items: center;
 }
 .gnest-folder-icon { opacity: 0.7; }
 .gnest-divider { height: 1px; background-color: #444746; margin: 8px 16px; }
 
-/* 3. 操作按鈕區與 Context Menu */
+/* 3. 更多選項與 Context Menu */
 .gnest-folder-actions {
   position: absolute; right: 8px; display: flex; align-items: center;
   opacity: 0; transition: opacity 0.2s; pointer-events: none;
@@ -66,91 +70,44 @@
 
 #gnest-context-menu {
   position: fixed; background: #1e1f20; border: 1px solid #444746; border-radius: 8px;
-  padding: 8px 0; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  padding: 8px 0; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 999999; font-family: 'Google Sans', sans-serif;
 }
 .gnest-cm-item { display: flex; align-items: center; padding: 10px 16px; font-size: 13px; color: #e3e3e3; cursor: pointer; }
 .gnest-cm-item:hover { background-color: #333537; }
-.gnest-cm-item svg { margin-right: 12px; color: #c4c7c5; }
+.gnest-cm-item span { margin-right: 12px; font-size: 16px; }
 
-
-/* =========================================
-   🔧 補回遺失的 Modal 樣式 (解決圖片破版問題) 
-   ========================================= */
+/* Modal 相關 (維持上版) */
 #gnest-modal-overlay {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.6); z-index: 200000; /* 最高層級 */
-  display: flex; justify-content: center; align-items: center; /* 使用 Flexbox 完美置中 */
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6); z-index: 200000;
+  display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);
 }
-
 .gnest-modal-box {
-  background: #1e1f20; padding: 24px; border-radius: 24px;
-  width: 320px; color: #e3e3e3;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
-  font-family: 'Google Sans', Roboto, sans-serif;
-  border: 1px solid #444746;
+  background: #1e1f20; padding: 24px; border-radius: 24px; width: 320px; color: #e3e3e3;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6); font-family: 'Google Sans', sans-serif; border: 1px solid #444746;
 }
-
-.gnest-modal-box h3 { margin-top: 0; font-size: 20px; font-weight: 400; margin-bottom: 20px; color: #e3e3e3; }
-
+.gnest-modal-box h3 { margin-top: 0; font-size: 20px; font-weight: 400; margin-bottom: 20px; }
 .gnest-input {
-  width: 100%; padding: 12px 16px; margin-bottom: 16px;
-  background: #131314; color: white; border: 1px solid #444746;
-  border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 14px;
+  width: 100%; padding: 12px 16px; margin-bottom: 16px; background: #131314; color: white;
+  border: 1px solid #444746; border-radius: 8px; box-sizing: border-box; font-size: 14px;
 }
 .gnest-input:focus { outline: none; border-color: #8ab4f8; }
-
 .gnest-btn-group { display: flex; justify-content: flex-end; margin-top: 24px; gap: 12px; }
-
-.gnest-btn-cancel {
-  background: transparent; color: #a8c7fa; border: none; cursor: pointer;
-  font-weight: 500; padding: 10px 16px; border-radius: 20px; font-size: 14px; transition: background 0.2s;
-}
+.gnest-btn-cancel { background: transparent; color: #a8c7fa; border: none; cursor: pointer; padding: 10px 16px; border-radius: 20px; font-size: 14px; }
 .gnest-btn-cancel:hover { background: rgba(168, 199, 250, 0.08); }
+.gnest-btn-ok { background: #a8c7fa; color: #062e6f; border: none; padding: 10px 24px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 14px; }
 
-.gnest-btn-ok {
-  background: #a8c7fa; color: #062e6f; border: none; padding: 10px 24px;
-  border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 14px; transition: background 0.2s;
-}
-.gnest-btn-ok:hover { opacity: 0.9; }
-
-
-/* =========================================
-   Sprint 2: 高階互動功能 (滑軌與小幫手) 
-   ========================================= */
-#gnest-scroll-rail {
-  position: fixed; right: 16px; top: 120px; height: calc(100vh - 240px);
-  width: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px;
-  z-index: 9000; display: flex; flex-direction: column; align-items: center;
-  padding: 10px 0; gap: 15px; overflow-y: auto;
-}
+/* 聊天節點與小幫手 (維持上版) */
+#gnest-scroll-rail { position: fixed; right: 16px; top: 120px; height: calc(100vh - 240px); width: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; z-index: 9000; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 15px; overflow-y: auto; }
 #gnest-scroll-rail::-webkit-scrollbar { display: none; }
-.gnest-scroll-node {
-  width: 10px; height: 10px; background: #8ab4f8; border-radius: 50%;
-  cursor: pointer; position: relative; transition: transform 0.2s, background 0.2s; flex-shrink: 0;
-}
+.gnest-scroll-node { width: 10px; height: 10px; background: #8ab4f8; border-radius: 50%; cursor: pointer; position: relative; transition: transform 0.2s, background 0.2s; flex-shrink: 0; }
 .gnest-scroll-node:hover { transform: scale(1.5); background: #fff; }
-.gnest-node-tooltip {
-  position: absolute; right: 25px; top: 50%; transform: translateY(-50%) translateX(10px);
-  background: #1e1f20; color: #e3e3e3; padding: 10px 14px; border-radius: 8px; border: 1px solid #444746;
-  width: max-content; max-width: 250px; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  pointer-events: none; opacity: 0; transition: all 0.2s ease; z-index: 9001;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
+.gnest-node-tooltip { position: absolute; right: 25px; top: 50%; transform: translateY(-50%) translateX(10px); background: #1e1f20; color: #e3e3e3; padding: 10px 14px; border-radius: 8px; border: 1px solid #444746; width: max-content; max-width: 250px; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none; opacity: 0; transition: all 0.2s ease; z-index: 9001; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .gnest-scroll-node:hover .gnest-node-tooltip { opacity: 1; transform: translateY(-50%) translateX(0); }
-
-#gnest-helper {
-  position: fixed; bottom: 40px; right: 40px; width: 48px; height: 48px;
-  background: #1a73e8; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  cursor: grab; z-index: 99999; display: flex; justify-content: center; align-items: center;
-  font-size: 20px; color: white; user-select: none; transition: transform 0.1s;
-}
+#gnest-helper { position: fixed; bottom: 40px; right: 40px; width: 48px; height: 48px; background: #1a73e8; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: grab; z-index: 99999; display: flex; justify-content: center; align-items: center; font-size: 20px; color: white; user-select: none; transition: transform 0.1s; }
 #gnest-helper:active { cursor: grabbing; transform: scale(0.95); }
-#gnest-helper-menu {
-  position: absolute; bottom: 60px; right: 0; background: #1e1f20; border: 1px solid #444746;
-  border-radius: 12px; padding: 8px 0; width: 160px; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 100000;
-}
-.gnest-helper-item { display: flex; align-items: center; padding: 10px 16px; font-size: 14px; color: #e3e3e3; cursor: pointer; }
+#gnest-helper-menu { position: absolute; bottom: 60px; right: 0; background: #1e1f20; border: 1px solid #444746; border-radius: 12px; padding: 8px 0; width: 160px; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 100000; }
+.gnest-helper-item { display: flex; align-items: center; padding: 10px 16px; font-size: 13px; color: #e3e3e3; cursor: pointer; }
 .gnest-helper-item:hover { background: #333537; }
-.gnest-helper-item svg { margin-right: 12px; color: #c4c7c5; }
+.gnest-helper-item span { margin-right: 12px; font-size: 16px; }
