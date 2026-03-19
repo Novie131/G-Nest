@@ -8,7 +8,9 @@
 
 /* 1. 大分類標題 (類似 Gem) */
 .gnest-section { margin-bottom: 12px; }
-.gnest-section summary {
+
+/* 👑 提升權重：加上 #gnest-root 前綴 */
+#gnest-root .gnest-section summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,15 +21,20 @@
   cursor: pointer;
   list-style: none; /* 隱藏預設箭頭 */
 }
-.gnest-section summary::-webkit-details-marker { display: none; }
-.gnest-section summary:hover { background-color: rgba(255,255,255,0.04); }
+#gnest-root .gnest-section summary::-webkit-details-marker { display: none; }
+
+/* 👑 強制 Hover 背景變色 */
+#gnest-root .gnest-section summary:hover { 
+  background-color: rgba(255,255,255,0.04) !important; 
+}
 
 /* 分類標題的箭頭動畫 */
 .gnest-chevron { transition: transform 0.2s; }
 .gnest-section[open] > summary .gnest-chevron { transform: rotate(90deg); }
 
 /* 2. 資料夾項目 (Pill Shape & Hover 效果) */
-.gnest-folder-summary {
+/* 👑 提升權重：加上 #gnest-root 前綴 */
+#gnest-root .gnest-folder-summary {
   position: relative;
   display: flex;
   align-items: center;
@@ -41,8 +48,12 @@
   transition: background 0.2s;
   list-style: none;
 }
-.gnest-folder-summary::-webkit-details-marker { display: none; }
-.gnest-folder-summary:hover { background-color: #2d2e30; }
+#gnest-root .gnest-folder-summary::-webkit-details-marker { display: none; }
+
+/* 👑 強制 Hover 背景變色 */
+#gnest-root .gnest-folder-summary:hover { 
+  background-color: #2d2e30 !important; 
+}
 
 .gnest-folder-icon {
   margin-right: 12px;
@@ -60,7 +71,7 @@
   opacity: 0;
   transition: opacity 0.2s;
 }
-.gnest-folder-summary:hover .gnest-folder-actions { opacity: 1; }
+#gnest-root .gnest-folder-summary:hover .gnest-folder-actions { opacity: 1; }
 
 .gnest-action-btn {
   display: flex; justify-content: center; align-items: center;
@@ -69,7 +80,7 @@
   color: #c4c7c5;
   cursor: pointer;
 }
-.gnest-action-btn:hover { background-color: rgba(255,255,255,0.08); color: white; }
+.gnest-action-btn:hover { background-color: rgba(255,255,255,0.08) !important; color: white; }
 
 /* 4. 子項目 (對話或知識庫細節) */
 .gnest-sub-list { padding: 4px 0 8px 46px; }
@@ -104,3 +115,126 @@
 }
 .gnest-cm-item:hover { background-color: #333537; }
 .gnest-cm-item svg { margin-right: 12px; color: #c4c7c5; }
+
+
+/* =========================================
+   Sprint 2: 高階互動功能 (滑軌與小幫手) 
+   ========================================= */
+
+/* --- 1. 聊天節點滑軌 (Chat Rail) --- */
+#gnest-scroll-rail {
+  position: fixed;
+  right: 16px;
+  top: 120px;
+  height: calc(100vh - 240px);
+  width: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 15px; /* 節點間距 */
+  overflow-y: auto; /* 如果對話太多允許滾動 */
+}
+
+/* 隱藏滑軌本身的捲軸 */
+#gnest-scroll-rail::-webkit-scrollbar { display: none; }
+
+.gnest-scroll-node {
+  width: 10px;
+  height: 10px;
+  background: #8ab4f8;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+
+.gnest-scroll-node:hover {
+  transform: scale(1.5);
+  background: #fff;
+}
+
+/* 節點的懸浮提示 (Tooltip) */
+.gnest-node-tooltip {
+  position: absolute;
+  right: 20px;
+  top: -10px;
+  background: #1e1f20;
+  color: #e3e3e3;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #444746;
+  width: max-content;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s ease;
+  /* 讓過長的文字折行並加上... */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gnest-scroll-node:hover .gnest-node-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* --- 2. 漂浮小幫手 (Floating Helper) --- */
+#gnest-helper {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  width: 48px;
+  height: 48px;
+  background: #1a73e8;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  cursor: grab;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  color: white;
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+#gnest-helper:active { cursor: grabbing; transform: scale(0.95); }
+
+/* 小幫手的彈出選單 */
+#gnest-helper-menu {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  background: #1e1f20;
+  border: 1px solid #444746;
+  border-radius: 12px;
+  padding: 8px 0;
+  width: 160px;
+  display: none; /* 預設隱藏 */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+.gnest-helper-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #e3e3e3;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gnest-helper-item:hover { background: #333537; }
+.gnest-helper-item svg { margin-right: 12px; }
