@@ -1,13 +1,10 @@
-console.log("🚀 G-Nest 旗艦版：全功能啟動中...");
+console.log("🚀 G-Nest 架構重構版啟動...");
 
-// --- 1. 資料層：管理資料夾與知識庫 ---
+// --- 1. 資料層 ---
 const DataManager = {
   async getCoreData() {
     const data = await chrome.storage.sync.get(['gnest_folders', 'gnest_kbs']);
-    return {
-      folders: data.gnest_folders || [], // {id, name, kbId, chats:[]}
-      kbs: data.gnest_kbs || []          // {id, name, desc}
-    };
+    return { folders: data.gnest_folders || [], kbs: data.gnest_kbs || [] };
   },
   async saveFolder(name, kbId) {
     const { folders } = await this.getCoreData();
@@ -23,6 +20,12 @@ const DataManager = {
   }
 };
 
+// Google 官方 SVG Icons
+const Icons = {
+  folderAdd: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-320h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80ZM160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`,
+  kbAdd: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M520-600v-240h320v240H520ZM120-120v-240h320v240H120Zm400 0v-240h320v240H520ZM120-600v-240h320v240H120Zm80-80h160v-80H200v80Zm400 0h160v-80H600v80ZM200-200h160v-80H200v80Zm400 0h160v-80H600v80Zm-400-480v80-80Zm400 0v80-80Zm-400 400v80-80Zm400 0v80-80Z"/></svg>`
+};
+
 // --- 2. 視窗管理 (Modal) ---
 const ModalManager = {
   close() { const el = document.getElementById('gnest-modal-overlay'); if (el) el.remove(); },
@@ -31,23 +34,22 @@ const ModalManager = {
     this.close();
     const overlay = document.createElement('div');
     overlay.id = 'gnest-modal-overlay';
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(3px);";
     
     const box = document.createElement('div');
-    box.style.cssText = "background:#1e1e1e; padding:24px; border-radius:12px; border:1px solid #444746; width:340px; color:#e3e3e3; font-family:sans-serif; box-shadow:0 8px 30px rgba(0,0,0,0.5);";
-    box.innerHTML = `<h3 style="margin-top:0; font-size:18px;">${title}</h3>${contentHTML}`;
+    box.className = 'gnest-modal-box';
+    box.innerHTML = `<h3>${title}</h3>${contentHTML}`;
     
     const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = "display:flex; justify-content:flex-end; margin-top:20px;";
+    btnGroup.className = 'gnest-btn-group';
     
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'gnest-btn-cancel';
     cancelBtn.innerText = "取消";
-    cancelBtn.style.cssText = "background:none; color:#8ab4f8; border:none; cursor:pointer; font-weight:bold; padding:8px 15px;";
     cancelBtn.onclick = () => this.close();
     
     const okBtn = document.createElement('button');
+    okBtn.className = 'gnest-btn-ok';
     okBtn.innerText = "建立";
-    okBtn.style.cssText = "background:#8ab4f8; color:#131314; border:none; padding:8px 20px; border-radius:18px; cursor:pointer; font-weight:bold; margin-left:10px;";
     okBtn.onclick = onConfirm;
 
     btnGroup.appendChild(cancelBtn);
@@ -59,16 +61,15 @@ const ModalManager = {
 
   async openFolderModal() {
     const { kbs } = await DataManager.getCoreData();
-    let kbOptions = '<option value="">(無配對)</option>';
-    kbs.forEach(k => kbOptions += `<option value="${k.id}">${k.name}</option>`);
+    let kbOptions = '<option value="" style="background:#1e1f20;">(無配對)</option>';
+    kbs.forEach(k => kbOptions += `<option value="${k.id}" style="background:#1e1f20;">${k.name}</option>`);
 
     const html = `
-      <label style="font-size:12px; color:#9aa0a6;">資料夾名稱</label>
-      <input type="text" id="fd-name" style="width:100%; padding:10px; margin:8px 0 15px 0; background:#333; color:white; border:1px solid #555; border-radius:4px; box-sizing:border-box;">
-      <label style="font-size:12px; color:#9aa0a6;">配對知識庫 (KB)</label>
-      <select id="fd-kb" style="width:100%; padding:10px; margin-top:8px; background:#333; color:white; border:1px solid #555; border-radius:4px;">${kbOptions}</select>
+      <input type="text" id="fd-name" class="gnest-input" placeholder="資料夾名稱">
+      <div style="font-size:12px; color:#c4c7c5; margin-bottom:4px;">配對知識庫</div>
+      <select id="fd-kb" class="gnest-input">${kbOptions}</select>
     `;
-    this.createBase("📁 新增對話資料夾", html, async () => {
+    this.createBase("新建資料夾", html, async () => {
       const name = document.getElementById('fd-name').value;
       const kbId = document.getElementById('fd-kb').value;
       if (name) { await DataManager.saveFolder(name, kbId); this.close(); }
@@ -77,12 +78,10 @@ const ModalManager = {
 
   openKBModal() {
     const html = `
-      <label style="font-size:12px; color:#9aa0a6;">知識庫名稱</label>
-      <input type="text" id="kb-name" placeholder="例如: Go 語言實作規範" style="width:100%; padding:10px; margin:8px 0 15px 0; background:#333; color:white; border:1px solid #555; border-radius:4px; box-sizing:border-box;">
-      <label style="font-size:12px; color:#9aa0a6;">簡介/連結</label>
-      <input type="text" id="kb-desc" placeholder="例如: GitHub Repo 連結" style="width:100%; padding:10px; margin-top:8px; background:#333; color:white; border:1px solid #555; border-radius:4px; box-sizing:border-box;">
+      <input type="text" id="kb-name" class="gnest-input" placeholder="知識庫名稱">
+      <input type="text" id="kb-desc" class="gnest-input" placeholder="簡介/連結">
     `;
-    this.createBase("📚 新增知識庫", html, async () => {
+    this.createBase("新建知識庫", html, async () => {
       const name = document.getElementById('kb-name').value;
       const desc = document.getElementById('kb-desc').value;
       if (name) { await DataManager.saveKB(name, desc); this.close(); }
@@ -93,20 +92,19 @@ const ModalManager = {
 // --- 3. UI 注入與顯示控制 ---
 const UIController = {
   async refresh() {
-    const root = document.getElementById('gnest-root');
-    if (!root) { this.init(); return; }
+    const listArea = document.getElementById('gnest-list-area');
+    if (!listArea) return;
 
     const { folders, kbs } = await DataManager.getCoreData();
-    const listArea = document.getElementById('gnest-list-area');
     listArea.innerHTML = '';
 
     folders.forEach(f => {
       const kb = kbs.find(k => k.id === f.kbId);
-      const kbTag = kb ? `<span style="font-size:10px; color:#8ab4f8; margin-left:8px; background:rgba(138,180,248,0.1); padding:2px 6px; border-radius:4px;">📚 ${kb.name}</span>` : '';
+      const kbTag = kb ? `<span class="gnest-kb-tag">📚 ${kb.name}</span>` : '';
       
       const item = document.createElement('div');
-      item.style.cssText = "padding:8px 0; font-size:13px; color:#e3e3e3; display:flex; align-items:center; cursor:pointer;";
-      item.innerHTML = `<span>📁 ${f.name}</span>${kbTag}`;
+      item.className = 'gnest-folder-item';
+      item.innerHTML = `<span class="gnest-folder-icon">📁</span><span>${f.name}</span>${kbTag}`;
       listArea.appendChild(item);
     });
   },
@@ -114,7 +112,6 @@ const UIController = {
   init() {
     if (document.getElementById('gnest-root')) return;
 
-    // 尋找「我的內容」文字節點
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
     let targetNode = null;
     while(targetNode = walker.nextNode()) {
@@ -129,26 +126,35 @@ const UIController = {
   inject(anchor) {
     const root = document.createElement('div');
     root.id = 'gnest-root';
-    root.style.cssText = "margin-top: 10px; padding: 0 16px; border-top: 1px solid #444746; color: #e3e3e3; font-family:sans-serif;";
     
-    root.innerHTML = `
-      <div id="gnest-btn-folder" style="display:flex; align-items:center; padding:12px 0; cursor:pointer; font-size:14px; color:#8ab4f8; transition: opacity 0.2s;">
-        <span style="margin-right:10px;">📁+</span> 新增對話資料夾
-      </div>
-      <div id="gnest-btn-kb" style="display:flex; align-items:center; padding:5px 0 12px 0; cursor:pointer; font-size:14px; color:#8ab4f8; transition: opacity 0.2s;">
-        <span style="margin-right:10px;">📚+</span> 新增知識庫
-      </div>
-      <div id="gnest-list-area" style="border-top: 1px solid #333; padding-top:10px;"></div>
-    `;
+    // 按鈕
+    const btnFolder = document.createElement('div');
+    btnFolder.className = 'gnest-pill-btn';
+    btnFolder.innerHTML = `<span class="gnest-btn-icon">${Icons.folderAdd}</span><span>新增對話資料夾</span>`;
+    
+    const btnKB = document.createElement('div');
+    btnKB.className = 'gnest-pill-btn';
+    btnKB.innerHTML = `<span class="gnest-btn-icon">${Icons.kbAdd}</span><span>新增知識庫</span>`;
+    
+    // 分隔線與清單區
+    const divider = document.createElement('div');
+    divider.className = 'gnest-divider';
+    const listArea = document.createElement('div');
+    listArea.id = 'gnest-list-area';
+
+    // 綁定事件
+    btnFolder.onclick = () => ModalManager.openFolderModal();
+    btnKB.onclick = () => ModalManager.openKBModal();
+
+    // 組裝
+    root.appendChild(btnFolder);
+    root.appendChild(btnKB);
+    root.appendChild(divider);
+    root.appendChild(listArea);
 
     anchor.parentNode.insertBefore(root, anchor.nextSibling);
-
-    document.getElementById('gnest-btn-folder').onclick = () => ModalManager.openFolderModal();
-    document.getElementById('gnest-btn-kb').onclick = () => ModalManager.openKBModal();
-
     this.refresh();
   }
 };
 
-// 保持掃描，確保 UI 始終存在
 setInterval(() => UIController.init(), 2000);
