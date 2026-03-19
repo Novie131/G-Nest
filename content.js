@@ -1,4 +1,4 @@
-console.log("🚀 G-Nest 終極完全體啟動：包含強化 DOM 掃描邏輯...");
+console.log("🚀 G-Nest 完美修復版啟動：找回按鈕與強化節點掃描...");
 
 // --- 1. 資料層 ---
 const DataManager = {
@@ -7,11 +7,11 @@ const DataManager = {
     return { folders: data.gnest_folders || [], kbs: data.gnest_kbs || [] };
   },
   async deleteFolder(id) {
-    if(!confirm("確定要刪除此資料夾嗎？裡面的對話連結不會被刪除。")) return;
+    if(!confirm("確定要刪除此資料夾嗎？")) return;
     const { folders } = await this.getCoreData();
     await chrome.storage.sync.set({ gnest_folders: folders.filter(f => f.id !== id) });
     UIController.refresh();
-    ContextMenu.close();
+    ModalManager.closeAll();
   },
   async deleteKB(id) {
     const { kbs, folders } = await this.getCoreData();
@@ -34,8 +34,10 @@ const DataManager = {
   }
 };
 
-// --- 2. 圖示庫 ---
+// --- 2. 圖示庫 (找回遺失的圖示) ---
 const Icons = {
+  folderAdd: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-320h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80ZM160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`,
+  kbAdd: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M520-600v-240h320v240H520ZM120-120v-240h320v240H120Zm400 0v-240h320v240H520ZM120-600v-240h320v240H120Zm80-80h160v-80H200v80Zm400 0h160v-80H600v80ZM200-200h160v-80H200v80Zm400 0h160v-80H600v80Zm-400-480v80-80Zm400 0v80-80Zm-400 400v80-80Zm400 0v80-80Z"/></svg>`,
   chevron: `<svg class="gnest-chevron" width="18" height="18" viewBox="0 -960 960 960" fill="currentColor"><path d="M400-280v-400l200 200-200 200Z"/></svg>`,
   folder: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`,
   more: `<svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"/></svg>`,
@@ -45,36 +47,114 @@ const Icons = {
   bot: `<svg width="24" height="24" viewBox="0 -960 960 960" fill="currentColor"><path d="M160-120v-160q0-33 23.5-56.5T240-360h480q33 0 56.5 23.5T800-280v160H160Zm320-320q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Z"/></svg>`
 };
 
-// --- 3. UI 控制器 ---
-const ContextMenu = {
-  close() { const m = document.getElementById('gnest-context-menu'); if(m) m.remove(); },
-  open(e, folder) {
-    this.close(); e.preventDefault(); e.stopPropagation();
+// --- 3. 視窗與選單管理 (找回專業的 Modal) ---
+const ModalManager = {
+  closeAll() {
+    const el = document.getElementById('gnest-modal-overlay'); if (el) el.remove();
+    const m = document.getElementById('gnest-context-menu'); if (m) m.remove();
+  },
+  
+  // 開啟建立資料夾的黑視窗
+  async openFolderModal() {
+    this.closeAll();
+    const { kbs } = await DataManager.getCoreData();
+    let options = '<option value="" style="background:#1e1f20;">(無配對)</option>';
+    kbs.forEach(k => options += `<option value="${k.id}" style="background:#1e1f20;">${k.name}</option>`);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'gnest-modal-overlay';
+    overlay.innerHTML = `
+      <div class="gnest-modal-box" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:20001;">
+        <h3>新建資料夾</h3>
+        <input type="text" id="fd-name" class="gnest-input" placeholder="資料夾名稱" autofocus>
+        <div style="font-size:12px; color:#c4c7c5; margin-bottom:4px;">配對知識庫</div>
+        <select id="fd-kb" class="gnest-input">${options}</select>
+        <div class="gnest-btn-group">
+          <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
+          <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
+    document.getElementById('btn-modal-create').onclick = async () => {
+      const name = document.getElementById('fd-name').value;
+      const kbId = document.getElementById('fd-kb').value;
+      if (name) { await DataManager.saveFolder(name, kbId); this.closeAll(); }
+    };
+  },
+
+  // 開啟建立知識庫的黑視窗
+  openKBModal() {
+    this.closeAll();
+    const overlay = document.createElement('div');
+    overlay.id = 'gnest-modal-overlay';
+    overlay.innerHTML = `
+      <div class="gnest-modal-box" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:20001;">
+        <h3>新建知識庫</h3>
+        <input type="text" id="kb-name" class="gnest-input" placeholder="知識庫名稱" autofocus>
+        <input type="text" id="kb-desc" class="gnest-input" placeholder="簡介/連結">
+        <div class="gnest-btn-group">
+          <button class="gnest-btn-cancel" id="btn-modal-cancel">取消</button>
+          <button class="gnest-btn-ok" id="btn-modal-create">建立</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('btn-modal-cancel').onclick = () => this.closeAll();
+    document.getElementById('btn-modal-create').onclick = async () => {
+      const name = document.getElementById('kb-name').value;
+      const desc = document.getElementById('kb-desc').value;
+      if (name) { await DataManager.saveKB(name, desc); this.closeAll(); }
+    };
+  },
+
+  // 開啟三點選項選單
+  openContextMenu(e, folder) {
+    this.closeAll(); e.preventDefault(); e.stopPropagation();
     const menu = document.createElement('div');
     menu.id = 'gnest-context-menu';
     menu.innerHTML = `
       <div class="gnest-cm-item" id="cm-add">${Icons.add} 存入當前對話</div>
       <div class="gnest-cm-item" id="cm-del" style="color:#ff8080;">${Icons.delete} 刪除資料夾</div>
     `;
-    // 定位修復：使用 fixed 定位，插在 body
     const rect = e.target.closest('.btn-more').getBoundingClientRect();
     menu.style.top = `${rect.bottom + 5}px`; 
     menu.style.left = `${rect.left}px`;
     document.body.appendChild(menu);
     
-    // 監聽外部點擊關閉
-    setTimeout(() => { document.addEventListener('click', this.close, {once: true}); }, 0);
-
+    setTimeout(() => { document.addEventListener('click', this.closeAll, {once: true}); }, 0);
     document.getElementById('cm-del').onclick = () => DataManager.deleteFolder(folder.id);
   }
 };
 
+// --- 4. 側邊欄 UI 控制器 ---
 const UIController = {
   async refresh() {
     const root = document.getElementById('gnest-root');
     if (!root) return;
     const { folders, kbs } = await DataManager.getCoreData();
-    root.innerHTML = ''; // 清空重新渲染
+    root.innerHTML = ''; 
+
+    // 1️⃣ 找回遺失的「新增按鈕」區塊
+    const btnGroup = document.createElement('div');
+    btnGroup.style.cssText = "margin-bottom: 15px;";
+    btnGroup.innerHTML = `
+      <div class="gnest-pill-btn" id="gnest-btn-folder" style="margin-bottom: 5px;">
+        <span class="gnest-btn-icon">${Icons.folderAdd}</span><span>新增對話資料夾</span>
+      </div>
+      <div class="gnest-pill-btn" id="gnest-btn-kb">
+        <span class="gnest-btn-icon">${Icons.kbAdd}</span><span>新增知識庫</span>
+      </div>
+      <div class="gnest-divider" style="margin-top: 15px;"></div>
+    `;
+    root.appendChild(btnGroup);
+
+    // 綁定按鈕事件
+    document.getElementById('gnest-btn-folder').onclick = () => ModalManager.openFolderModal();
+    document.getElementById('gnest-btn-kb').onclick = () => ModalManager.openKBModal();
 
     const createSection = (title) => {
       const sec = document.createElement('details');
@@ -83,7 +163,7 @@ const UIController = {
       return sec;
     };
 
-    // 渲染資料夾
+    // 2️⃣ 渲染對話資料夾
     const folderSection = createSection('對話資料夾');
     folders.forEach(f => {
       const fdItem = document.createElement('details');
@@ -100,19 +180,11 @@ const UIController = {
           ${!hasChats ? '<div class="gnest-sub-item" style="color:#5f6368; cursor:default;">(空)</div>' : ''}
         </div>
       `;
-      // 綁定選項按鈕事件 (防止冒泡)
-      fdItem.querySelector('.btn-more').onclick = (e) => ContextMenu.open(e, f);
-      
-      // 這裡之後要實作點擊資料夾過濾側邊欄的邏輯
-      fdItem.querySelector('summary').onclick = (e) => {
-        if(e.target.closest('.gnest-folder-actions')) return; // 點按鈕不折疊
-        console.log(`過濾資料夾: ${f.name}`);
-      }
-
+      fdItem.querySelector('.btn-more').onclick = (e) => ModalManager.openContextMenu(e, f);
       folderSection.appendChild(fdItem);
     });
 
-    // 渲染知識庫
+    // 3️⃣ 渲染知識庫
     const kbSection = createSection('知識庫');
     kbs.forEach(k => {
       const kbItem = document.createElement('details');
@@ -133,48 +205,29 @@ const UIController = {
   },
 
   initSidebar() {
-    // 避免重複注入
     if (document.getElementById('gnest-root')) return;
 
-    // 🔧 修復核心：強化雷達定位
-    // 我們不再找 XPath 文字，改找「新對話」按鈕所在的父容器，這是最穩定的地基。
-    const selectors = [
-      'div[role="navigation"] ul', // 嘗試找導航列清單
-      'nav ul',                     // 嘗試找 nav 裡的 ul
-      '.left-nav-content'           // 舊版 class 備胎
-    ];
-    
-    let nativeList = null;
-    for (const s of selectors) {
-      nativeList = document.querySelector(s);
-      if (nativeList) break;
-    }
-
-    if (!nativeList) {
-      // 終極備胎：找那顆巨大的「新對話」按鈕的父父層
-      const newChatBtn = document.querySelector('button[aria-label*="對話"]') || 
-                         document.querySelector('button[aria-label*="chat"]');
-      if (newChatBtn) {
-        nativeList = newChatBtn.closest('div').parentElement;
+    // 🔧 修復位置錯誤：用 TreeWalker 找回「我的內容」，精準插在它下方
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    let targetNode = null;
+    while(targetNode = walker.nextNode()) {
+      if (targetNode.textContent.trim() === '我的內容') {
+        const anchor = targetNode.parentElement.closest('div[role="listitem"]') || targetNode.parentElement.parentElement;
+        const root = document.createElement('div');
+        root.id = 'gnest-root';
+        // InsertAfter 的標準寫法
+        anchor.parentNode.insertBefore(root, anchor.nextSibling);
+        this.refresh();
+        console.log("✅ 側邊欄 UI 已精準定位於「我的內容」下方");
+        return;
       }
-    }
-
-    if (nativeList) {
-      console.log("✅ 成功找到側邊欄地基，注入 G-Nest！");
-      const root = document.createElement('div');
-      root.id = 'gnest-root';
-      
-      // 塞在原生清單的最前面
-      nativeList.prepend(root);
-      this.refresh();
     }
   }
 };
 
-// --- 4. Sprint 2: 聊天節點滑軌 (Chat Rail) ---
+// --- 5. 聊天節點滑軌 (Chat Rail) ---
 const ChatRailTracker = {
   init() {
-    // SPA 換頁檢查：如果沒在 /chat/ 路徑下，移除滑軌
     if (!window.location.href.includes('/chat/')) {
       const existingRail = document.getElementById('gnest-scroll-rail');
       if (existingRail) existingRail.remove();
@@ -185,7 +238,6 @@ const ChatRailTracker = {
       const rail = document.createElement('div');
       rail.id = 'gnest-scroll-rail';
       document.body.appendChild(rail);
-      console.log("✅ 聊天滑軌已載入");
     }
     this.scanChats();
   },
@@ -194,32 +246,20 @@ const ChatRailTracker = {
     const rail = document.getElementById('gnest-scroll-rail');
     if (!rail) return;
     
-    // 🔧 修復核心：強化聊天節點雷達
-    // 原生 selector data-message-author-role 在 SPA 切換時可能失效
-    // 我們改用組合式 selector，搜尋多種可能的 user 提問特徵
-    const promptSelectors = [
-      'div[data-message-author-role="user"]', // 標準特徵
-      '.user-prompt',                        // 可能的 class
-      'message-content[role="presentation"]'   // 結構特徵 (謹慎使用)
-    ];
+    // 🔧 強力雷達：網羅 Gemini 所有可能的「使用者對話」標籤
+    const promptSelectors = 'user-query, div[data-message-author-role="user"], div[class*="user-query"], div[class*="query-text"]';
     
-    let userPrompts = [];
-    for (const s of promptSelectors) {
-      const found = document.querySelectorAll(s);
-      if (found.length > 0) {
-        userPrompts = found;
-        break; // 找到一種就夠了
-      }
-    }
+    // 找出所有符合條件的元素，並排除側邊欄裡面的雜訊
+    const foundElements = document.querySelectorAll(promptSelectors);
+    const userPrompts = Array.from(foundElements).filter(el => !el.closest('nav') && !el.closest('aside'));
 
-    // SPA 防護：如果搜尋結果沒變，不重繪 (效能優化)
+    // 如果數量沒變，就不重新渲染 (節省效能)
     const currentCount = rail.querySelectorAll('.gnest-scroll-node').length;
     if (userPrompts.length === currentCount && currentCount > 0) return;
 
-    rail.innerHTML = ''; // 清空
+    rail.innerHTML = ''; 
 
     userPrompts.forEach((prompt, index) => {
-      // 抓取文字內容 (移除可能包含的 SVG 或其他雜物)
       const pureText = prompt.innerText || prompt.textContent || "";
       const textPreview = pureText.trim().substring(0, 100) + '...';
       
@@ -227,17 +267,13 @@ const ChatRailTracker = {
       node.className = 'gnest-scroll-node';
       node.innerHTML = `<div class="gnest-node-tooltip">💬 節點 ${index + 1}:<br>${textPreview}</div>`;
       
-      // 平滑滾動邏輯
-      node.onclick = () => {
-        prompt.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      };
-      
+      node.onclick = () => prompt.scrollIntoView({ behavior: 'smooth', block: 'center' });
       rail.appendChild(node);
     });
   }
 };
 
-// --- 5. Sprint 2: 漂浮小幫手 (Floating Helper) (保留你已完成的邏輯) ---
+// --- 6. 漂浮小幫手 ---
 const FloatingHelper = {
   init() {
     if (document.getElementById('gnest-helper')) return;
@@ -247,7 +283,6 @@ const FloatingHelper = {
       ${Icons.bot}
       <div id="gnest-helper-menu">
         <div class="gnest-helper-item" id="help-add-kb">${Icons.add} 新增知識庫</div>
-        <div class="gnest-helper-item" id="help-add-fd">${Icons.folder} 新增資料夾</div>
         <div class="gnest-helper-item" id="help-del-kb" style="color:#ff8080;">${Icons.delete} 刪除知識庫</div>
       </div>
     `;
@@ -278,39 +313,26 @@ const FloatingHelper = {
     };
   },
   bindMenu() {
-    // 將「新增資料夾/知識庫」的功能移到這裡
     document.getElementById('help-add-kb').onclick = () => {
-      this.closeMenu();
-      const name = prompt("請輸入新「知識庫」名稱：");
-      if (name) DataManager.saveKB(name, "透過小幫手新增");
-    };
-    document.getElementById('help-add-fd').onclick = () => {
-      this.closeMenu();
-      const name = prompt("請輸入新「對話資料夾」名稱：");
-      if (name) DataManager.saveFolder(name);
+      document.getElementById('gnest-helper-menu').style.display = 'none';
+      ModalManager.openKBModal(); // 讓小幫手也能叫出漂亮的視窗
     };
     document.getElementById('help-del-kb').onclick = async () => {
-      this.closeMenu();
-      // (簡化刪除邏輯，這裡之後要實作專業 Modal)
+      document.getElementById('gnest-helper-menu').style.display = 'none';
       const { kbs } = await DataManager.getCoreData();
       if(kbs.length===0) return alert("沒有知識庫");
-      const name = prompt(`請輸入要刪除的知識庫完整名稱：\n${kbs.map(k=>k.name).join('\n')}`);
+      const name = prompt(`請輸入要刪除的知識庫名稱：\n${kbs.map(k=>k.name).join('\n')}`);
       const target = kbs.find(k=>k.name === name);
       if(target) DataManager.deleteKB(target.id);
     };
-  },
-  closeMenu() { document.getElementById('gnest-helper-menu').style.display = 'none'; }
+  }
 };
 
-// --- 全域啟動與監控 (資工系專業：解決 SPA SPA 換頁偵測) ---
-// 使用更靈敏的偵測頻率，確保在 SPA 換頁時能抓到 DOM 變動
+// --- 全域啟動 ---
 setInterval(() => {
   UIController.initSidebar();
-  ChatRailTracker.init(); // init 內部會處理 SPA 檢查
+  ChatRailTracker.init(); 
   FloatingHelper.init();
 }, 1500); 
 
-// SPA 特殊處理：監聽網頁網址變動 (因為 setInterval 有時會慢半拍)
-window.addEventListener('popstate', () => {
-  ChatRailTracker.init();
-});
+window.addEventListener('popstate', () => ChatRailTracker.init());
