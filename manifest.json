@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Gemini Project Folders",
+    "name": "G-Nest",
     "version": "1.0",
     "description": "為 Gemini 側邊欄增加資料夾分類功能",
     "permissions": ["storage"],
