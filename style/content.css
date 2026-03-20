@@ -1,4 +1,4 @@
-/* --- G-Nest 完美像素級樣式表 (v3) --- */
+/* --- G-Nest 完美像素級樣式表 (v3.1 終極對齊版) --- */
 
 #gnest-root {
   margin: 8px 0;
@@ -11,7 +11,7 @@
 .gnest-section { margin-bottom: 12px; }
 #gnest-root .gnest-section summary {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px 8px 24px; /* 🔧 對齊修正：左側 padding 加大 */
+  padding: 8px 16px 8px 16px; /* 🔧 對齊修正：從 24px 改為 16px，完美對齊原生 */
   font-size: 13px; font-weight: 500; color: #e3e3e3; cursor: pointer; list-style: none;
 }
 #gnest-root .gnest-section summary::-webkit-details-marker { display: none; }
@@ -25,24 +25,24 @@
 #gnest-root .gnest-pill-btn {
   position: relative; display: flex; align-items: center;
   height: 38px;
-  padding: 0 16px 0 24px; /* 🔧 對齊修正：完美對齊原生的圖示位置 */
+  padding: 0 16px 0 16px; /* 🔧 對齊修正：從 24px 改為 16px，完美對齊原生圖示 */
   cursor: pointer; font-size: 13px; color: #e3e3e3; 
-  border-radius: 0 19px 19px 0; margin-right: 8px; 
+  border-radius: 0 19px 19px 0; margin-right: 12px; 
   transition: background 0.2s, border 0.2s; list-style: none;
 }
-#gnest-root .gnest-pill-btn { font-weight: 500; }
+#gnest-root .gnest-pill-btn { font-weight: 500; margin-left: 0; }
 #gnest-root .gnest-folder-summary::-webkit-details-marker { display: none; }
 #gnest-root .gnest-folder-summary:hover, 
 #gnest-root .gnest-pill-btn:hover { background-color: #2d2e30 !important; }
 
-/* 💡 拖曳時的發光效果 */
+/* 拖曳時的發光效果 */
 .gnest-drag-over > summary {
   background-color: rgba(138, 180, 248, 0.2) !important;
   border: 1px dashed #8ab4f8;
 }
 
 .gnest-folder-icon, .gnest-btn-icon {
-  margin-right: 16px; /* 🔧 調整圖示與文字的間距 */
+  margin-right: 16px; 
   color: #c4c7c5; display: flex; align-items: center;
 }
 .gnest-folder-icon { opacity: 0.7; }
@@ -75,9 +75,9 @@
 }
 .gnest-cm-item { display: flex; align-items: center; padding: 10px 16px; font-size: 13px; color: #e3e3e3; cursor: pointer; }
 .gnest-cm-item:hover { background-color: #333537; }
-.gnest-cm-item span { margin-right: 12px; font-size: 16px; }
+.gnest-cm-item svg { margin-right: 12px; color: #c4c7c5; }
 
-/* Modal 相關 (維持上版) */
+/* 4. Modal 相關 (新增紅色危險按鈕) */
 #gnest-modal-overlay {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0, 0, 0, 0.6); z-index: 200000;
@@ -98,7 +98,11 @@
 .gnest-btn-cancel:hover { background: rgba(168, 199, 250, 0.08); }
 .gnest-btn-ok { background: #a8c7fa; color: #062e6f; border: none; padding: 10px 24px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 14px; }
 
-/* 聊天節點與小幫手 (維持上版) */
+/* 🔴 危險操作按鈕 (刪除用) */
+.gnest-btn-danger { background: #ff8080 !important; color: #1e1f20 !important; }
+.gnest-btn-danger:hover { opacity: 0.8 !important; }
+
+/* 5. 聊天節點與小幫手 */
 #gnest-scroll-rail { position: fixed; right: 16px; top: 120px; height: calc(100vh - 240px); width: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; z-index: 9000; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 15px; overflow-y: auto; }
 #gnest-scroll-rail::-webkit-scrollbar { display: none; }
 .gnest-scroll-node { width: 10px; height: 10px; background: #8ab4f8; border-radius: 50%; cursor: pointer; position: relative; transition: transform 0.2s, background 0.2s; flex-shrink: 0; }
@@ -110,4 +114,4 @@
 #gnest-helper-menu { position: absolute; bottom: 60px; right: 0; background: #1e1f20; border: 1px solid #444746; border-radius: 12px; padding: 8px 0; width: 160px; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 100000; }
 .gnest-helper-item { display: flex; align-items: center; padding: 10px 16px; font-size: 13px; color: #e3e3e3; cursor: pointer; }
 .gnest-helper-item:hover { background: #333537; }
-.gnest-helper-item span { margin-right: 12px; font-size: 16px; }
+.gnest-helper-item svg { margin-right: 12px; color: #c4c7c5; }
